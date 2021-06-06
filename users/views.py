@@ -1,7 +1,8 @@
 from .models import User
 from .serializers import (
     UserSerializer, 
-    UserDetailSerializer
+    UserDetailSerializer,
+    UserResetPasswordSerializer
 )
 from rest_framework import status
 from django.contrib.auth import (
@@ -26,6 +27,7 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = User.objects.filter(pk = self.request.user.id)
         return queryset
     
+    
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def sign_up(self, request):
         data = request.data
@@ -37,6 +39,7 @@ class UserViewSet(viewsets.ModelViewSet):
         data['token'] = token.key
         print(user, data['token'])
         return Response({'data':data})
+    
     
     @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def login(self, request):
@@ -63,7 +66,26 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+    
     @action(detail=False, methods=['post'])
     def logout(self, request):
         logout(request)
         return Response({"logged_out": True})
+    
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        data = request.data
+        password = data.get('password')
+        old_password = data.get('old_password')
+        if old_password is None or password is None:
+            return Response({"message": "Old Password and New Password are Required."}, status=status.HTTP_403_FORBIDDEN)
+        elif not request.user.check_password(old_password):
+            return Response({"message": "Old password is Wrong."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            userQuerySet = User.objects.get(username=request.user.username)
+            reset_password_serializer = UserResetPasswordSerializer(data=request.data)
+            reset_password_serializer.is_valid(raise_exception=True)
+            request.user.set_password(password)
+            request.user.save()
+            return Response({"message":"Password is updated"})

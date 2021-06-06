@@ -1,5 +1,6 @@
-from rest_framework import serializers
 from users import models
+from rest_framework import serializers
+from django.contrib.auth import password_validation
 from django.contrib.auth.hashers import make_password
 
 class UserDetailSerializer(serializers.ModelSerializer):
@@ -30,3 +31,12 @@ class UserSerializer(serializers.ModelSerializer):
         if validated_data.get('password'):
             validated_data['password'] = make_password(validated_data['password'])
         return super(UserSerializer, self).create(validated_data)
+    
+class UserResetPasswordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.User
+        fields = ('password',)
+
+    def validate_password(self, value):
+        password_validation.validate_password(value, self.instance)
+        return value
